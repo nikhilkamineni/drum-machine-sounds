@@ -23,31 +23,41 @@ const noiseBuffer = context => {
   return buffer;
 };
 
-function kick(context, buffer, time) {
+function kick(context, destination) {
   const osc = context.createOscillator();
   const gain = context.createGain();
+  const filter = context.createBiquadFilter();
+  filter.frequency.value = 3000;
 
-  osc.type = 'triangle';
-  osc.frequency.value = 70;
-  osc.connect(gain);
+  // osc.type = 'sawtooth';
+  osc.frequency.value = 50;
+  osc.connect(filter);
+  filter.connect(gain);
 
-  gain.connect(context.destination);
+  gain.connect(destination);
   gain.gain.value = 0;
 
   osc.start(context.currentTime);
 
+  osc.frequency.exponentialRampToValueAtTime(30, context.currentTime + 0.1);
   const LENGTH = 0.1;
-  gain.gain.linearRampToValueAtTime(0.9, context.currentTime + 0.001);
-  gain.gain.setValueCurveAtTime([0.9, 0], context.currentTime + 0.001, LENGTH);
+  gain.gain.linearRampToValueAtTime(0.9, context.currentTime + 0.0001);
+  gain.gain.setValueCurveAtTime(
+    [0.9, 0.9, 0.8, 0.5, 0],
+    context.currentTime + 0.0001,
+    LENGTH
+  );
   osc.stop(context.currentTime + LENGTH + 0.1);
   console.log('Kick!');
 }
 
-function snare(context, time) {
+function snare(context, destination) {
   const noise = context.createBufferSource();
   noise.buffer = noiseBuffer(context);
   const noiseGain = context.createGain();
   noiseGain.gain.value = 0.1;
+  const filter = context.createBiquadFilter();
+  filter.frequency.value = 6000;
 
   const osc = context.createOscillator();
   osc.frequency.value = 200;
@@ -59,8 +69,9 @@ function snare(context, time) {
 
   osc.connect(gain);
 
-  gain.connect(context.destination);
+  gain.connect(filter);
   gain.gain.value = 0;
+  filter.connect(destination);
 
   noise.start(context.currentTime);
   osc.start(context.currentTime);
@@ -72,11 +83,11 @@ function snare(context, time) {
   console.log('Snare!');
 }
 
-function tom1(context, time) {
+function tom1(context, destination) {
   const osc = context.createOscillator();
   const gain = context.createGain();
 
-  osc.type = 'triangle';
+  osc.type = 'sine';
   osc.frequency.value = 250;
   osc.connect(gain);
 
@@ -92,11 +103,11 @@ function tom1(context, time) {
   console.log('Tom 1!');
 }
 
-function tom2(context, time) {
+function tom2(context, destination) {
   const osc = context.createOscillator();
   const gain = context.createGain();
 
-  osc.type = 'triangle';
+  osc.type = 'sine';
   osc.frequency.value = 150;
   osc.connect(gain);
 
@@ -112,11 +123,14 @@ function tom2(context, time) {
   console.log('Tom 2!');
 }
 
-function hhopen(context, time) {
+function hhopen(context, destination) {
   const noise = context.createBufferSource();
   noise.buffer = noiseBuffer(context);
   const noiseGain = context.createGain();
   noiseGain.gain.value = 0.5;
+  const filter = context.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = 2000;
 
   const osc = context.createOscillator();
   osc.frequency.value = 2000;
@@ -131,23 +145,27 @@ function hhopen(context, time) {
   osc.connect(oscGain);
   oscGain.connect(gain);
 
-  gain.connect(context.destination);
+  gain.connect(filter);
   gain.gain.value = 0;
+  filter.connect(destination);
 
   noise.start(context.currentTime);
   osc.start(context.currentTime);
 
   const LENGTH = 0.5;
-  gain.gain.linearRampToValueAtTime(0.7, context.currentTime + 0.001);
-  gain.gain.setValueCurveAtTime([0.7, 0], context.currentTime + 0.001, LENGTH);
+  gain.gain.linearRampToValueAtTime(0.2, context.currentTime + 0.001);
+  gain.gain.setValueCurveAtTime([0.2, 0], context.currentTime + 0.001, LENGTH);
   console.log('HH Open!');
 }
 
-function hhclosed(context, time) {
+function hhclosed(context, destination) {
   const noise = context.createBufferSource();
   noise.buffer = noiseBuffer(context);
   const noiseGain = context.createGain();
   noiseGain.gain.value = 0.5;
+  const filter = context.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = 2000;
 
   const osc = context.createOscillator();
   osc.type = 'triangle';
@@ -163,57 +181,68 @@ function hhclosed(context, time) {
   osc.connect(oscGain);
   oscGain.connect(gain);
 
-  gain.connect(context.destination);
+  gain.connect(filter);
   gain.gain.value = 0;
+  filter.connect(destination);
 
   noise.start(context.currentTime);
   osc.start(context.currentTime);
 
   const LENGTH = 0.1;
-  gain.gain.linearRampToValueAtTime(0.7, context.currentTime + 0.001);
-  gain.gain.setValueCurveAtTime([0.7, 0], context.currentTime + 0.001, LENGTH);
+  gain.gain.linearRampToValueAtTime(0.2, context.currentTime + 0.001);
+  gain.gain.setValueCurveAtTime([0.2, 0], context.currentTime + 0.001, LENGTH);
   console.log('HH Closed!');
 }
 
-function aux1(context, time) {
+function aux1(context, destination) {
   const osc = context.createOscillator();
-  osc.type = 'triangle';
+  osc.type = 'sawtooth';
+  const filter = context.createBiquadFilter();
   const gain = context.createGain();
 
   // osc.type = '';
   let randomNote = (Math.random() * 30 + 30) | 0;
   osc.frequency.value = midiToFreq(randomNote);
-  osc.frequency.linearRampToValueAtTime(midiToFreq(randomNote), context.currentTime + 0.1);
+  osc.frequency.linearRampToValueAtTime(
+    midiToFreq(randomNote),
+    context.currentTime + 0.1
+  );
   gain.connect(context.destination);
   gain.gain.value = 0;
   osc.start(context.getCurrentTime);
-  osc.connect(gain);
+  osc.connect(filter);
+  filter.connect(gain);
 
   const LENGTH = 2;
-  gain.gain.linearRampToValueAtTime(0.9, context.currentTime + 0.2);
-  gain.gain.setValueCurveAtTime([0.9, 0], context.currentTime + 0.2, LENGTH);
+  gain.gain.linearRampToValueAtTime(0.2, context.currentTime + 0.2);
+  gain.gain.setValueCurveAtTime([0.2, 0], context.currentTime + 0.2, LENGTH);
   osc.stop(context.currentTime + LENGTH + 0.4);
 
   console.log('Aux 1!');
 }
 
-function aux2(context, time) {
+function aux2(context, destination) {
   const osc = context.createOscillator();
-  osc.type = 'triangle';
+  osc.type = 'sawtooth';
+  const filter = context.createBiquadFilter();
   const gain = context.createGain();
 
   // osc.type = '';
-  let randomNote = (Math.random() * 30 + 50) | 0;
+  let randomNote = (Math.random() * 30 + 60) | 0;
   osc.frequency.value = midiToFreq(randomNote);
-  osc.frequency.linearRampToValueAtTime(midiToFreq(randomNote), context.currentTime + 0.1);
+  osc.frequency.linearRampToValueAtTime(
+    midiToFreq(randomNote),
+    context.currentTime + 0.1
+  );
   gain.connect(context.destination);
   gain.gain.value = 0;
   osc.start(context.getCurrentTime);
-  osc.connect(gain);
+  osc.connect(filter);
+  filter.connect(gain);
 
   const LENGTH = 2;
-  gain.gain.linearRampToValueAtTime(0.9, context.currentTime + 0.2);
-  gain.gain.setValueCurveAtTime([0.9, 0], context.currentTime + 0.2, LENGTH);
+  gain.gain.linearRampToValueAtTime(0.2, context.currentTime + 0.2);
+  gain.gain.setValueCurveAtTime([0.2, 0], context.currentTime + 0.2, LENGTH);
   osc.stop(context.currentTime + LENGTH + 0.4);
 
   console.log('Aux 1!');
